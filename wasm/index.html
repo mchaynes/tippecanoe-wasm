@@ -21,7 +21,9 @@
         }
         .subtitle {
             color: #666;
-            margin-bottom: 2rem;
+        }
+        .warning {
+            color: #722424;
         }
         .drop-zone {
             border: 2px dashed #ccc;
@@ -191,11 +193,22 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        .header {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
-    <h1>GeoJSON to PMTiles</h1>
-    <p class="subtitle">Convert GeoJSON files to PMTiles using Tippecanoe in your browser</p>
+    <div class="header">
+        <h1>GeoJSON to PMTiles</h1>
+        <a class="subtitle" href="https://github.com/mchaynes/tippecanoe-wasm" target="_blank">GitHub</a>
+    </div>
+
+        <p class="subtitle">Convert GeoJSON to PMTiles using Tippecanoe compiled to WASM</p>
 
     <div class="drop-zone" id="dropZone">
         <input type="file" id="fileInput" accept=".geojson,.json">
@@ -238,6 +251,12 @@
         <button class="download-btn" id="downloadBtn">Download PMTiles</button>
     </div>
 
+    <p class="warning">
+        This website is AI slop. I told Claude to compile Tippecanoe to WASM, and this is the result.
+    </p>
+    <p class="warning">
+        Seems to work okay though. YMMV.
+    </p>
     <script type="module">
         const { createTippecanoe } = await import('./index.js?v=6');
 
