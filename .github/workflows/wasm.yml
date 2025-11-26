@@ -18,6 +18,12 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache Emscripten
+        uses: actions/cache@v4
+        with:
+          path: ~/.emscripten_cache
+          key: emsdk-3.1.51-${{ runner.os }}
+
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
@@ -30,6 +36,12 @@ jobs:
         run: |
           emmake make -f Makefile.emscripten clean
           emmake make -f Makefile.emscripten single
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('wasm/package.json') }}
 
       - name: Install test dependencies
         working-directory: wasm
