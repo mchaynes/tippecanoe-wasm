@@ -121,4 +121,5 @@ jobs:
           wrangler pages deploy deploy \
             --project-name=tippecanoe-wasm \
             --branch=${{ github.ref_name }} \
-            --commit-hash=${{ github.sha }}
+            --commit-hash=${{ github.sha }} \
+            --assets=wasm/
