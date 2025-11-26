@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Test Point 1" },
+      "geometry": { "type": "Point", "coordinates": [-122.4, 37.8] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Test Point 2" },
+      "geometry": { "type": "Point", "coordinates": [-122.5, 37.7] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Test Line" },
+      "geometry": { "type": "LineString", "coordinates": [[-122.4, 37.8], [-122.5, 37.7]] }
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PMTiles Test</title>
+</head>
+<body>
+    <h1>PMTiles WASM Test</h1>
+    <pre id="log"></pre>
+    <script type="module">
+        import { createTippecanoe } from '../index.js';
+
+        const log = document.getElementById('log');
+        function print(msg) {
+            log.textContent += msg + '\n';
+            console.log(msg);
+        }
+
+        async function runTest() {
+            try {
+                print('Loading tippecanoe...');
+                const tippecanoe = await createTippecanoe({
+                    threads: false,
+                    onStdout: (text) => print('stdout: ' + text),
+                    onStderr: (text) => print('stderr: ' + text),
+                });
+                print('Tippecanoe loaded!');
+
+                // Load test GeoJSON
+                print('Loading test GeoJSON...');
+                const response = await fetch('../wetlands.geojson');
+                const geojsonText = await response.text();
+                const geojsonBytes = new TextEncoder().encode(geojsonText);
+                print(`GeoJSON size: ${geojsonBytes.length} bytes`);
+
+                // Run conversion
+                print('Running tippecanoe...');
+                const args = ['-o', 'output.pmtiles', '-z', '4', '-Z', '0', '--force', '--no-progress-indicator', 'input.geojson'];
+                print('Args: ' + args.join(' '));
+
+                const result = await tippecanoe.run(
+                    args,
+                    new Map([['input.geojson', geojsonBytes]])
+                );
+
+                print(`Output size: ${result.pmtiles ? result.pmtiles.length : 0} bytes`);
+
+                if (!result.pmtiles || result.pmtiles.length === 0) {
+                    throw new Error('No PMTiles output generated');
+                }
+
+                // Verify PMTiles header
+                print('Verifying PMTiles header...');
+                const data = result.pmtiles;
+
+                // Check magic bytes (first 7 bytes should be "PMTiles")
+                const magic = String.fromCharCode(...data.slice(0, 7));
+                if (magic !== 'PMTiles') {
+                    throw new Error(`Invalid magic: "${magic}" (expected "PMTiles")`);
+                }
+                print('Magic OK: PMTiles');
+
+                // Check version (byte 7 should be 3 for PMTiles v3)
+                if (data[7] !== 3) {
+                    throw new Error(`Invalid version: ${data[7]} (expected 3)`);
+                }
+                print('Version OK: 3');
+
+                // Parse header fields (offsets start at byte 8 after "PMTiles" + version)
+                const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+
+                const rootDirOffset = Number(view.getBigUint64(8, true));
+                const rootDirBytes = Number(view.getBigUint64(16, true));
+                const jsonMetadataOffset = Number(view.getBigUint64(24, true));
+                const jsonMetadataBytes = Number(view.getBigUint64(32, true));
+                const leafDirsOffset = Number(view.getBigUint64(40, true));
+                const leafDirsBytes = Number(view.getBigUint64(48, true));
+                const tileDataOffset = Number(view.getBigUint64(56, true));
+                const tileDataBytes = Number(view.getBigUint64(64, true));
+
+                print(`Header fields:`);
+                print(`  rootDirOffset: ${rootDirOffset}`);
+                print(`  rootDirBytes: ${rootDirBytes}`);
+                print(`  jsonMetadataOffset: ${jsonMetadataOffset}`);
+                print(`  jsonMetadataBytes: ${jsonMetadataBytes}`);
+                print(`  leafDirsOffset: ${leafDirsOffset}`);
+                print(`  leafDirsBytes: ${leafDirsBytes}`);
+                print(`  tileDataOffset: ${tileDataOffset}`);
+                print(`  tileDataBytes: ${tileDataBytes}`);
+
+                // Verify file size matches header
+                const expectedSize = tileDataOffset + tileDataBytes;
+                print(`Expected file size: ${expectedSize}`);
+                print(`Actual file size: ${data.length}`);
+
+                if (data.length !== expectedSize) {
+                    throw new Error(`File size mismatch: expected ${expectedSize}, got ${data.length}`);
+                }
+                print('File size OK!');
+
+                // Check offsets are sequential and within bounds
+                if (rootDirOffset !== 127) {
+                    throw new Error(`rootDirOffset should be 127, got ${rootDirOffset}`);
+                }
+                if (jsonMetadataOffset !== rootDirOffset + rootDirBytes) {
+                    throw new Error(`jsonMetadataOffset mismatch`);
+                }
+                if (leafDirsOffset !== jsonMetadataOffset + jsonMetadataBytes) {
+                    throw new Error(`leafDirsOffset mismatch`);
+                }
+                if (tileDataOffset !== leafDirsOffset + leafDirsBytes) {
+                    throw new Error(`tileDataOffset mismatch`);
+                }
+                print('Offset chain OK!');
+
+                print('\n=== ALL TESTS PASSED ===');
+                window.testResult = { success: true };
+
+            } catch (error) {
+                print('\nERROR: ' + error.message);
+                console.error(error);
+                window.testResult = { success: false, error: error.message };
+            }
+        }
+
+        runTest();
+    </script>
+</body>
+</html>

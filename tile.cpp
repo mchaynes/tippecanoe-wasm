@@ -49,6 +49,10 @@
 #include "thread.hpp"
 #include "shared_borders.hpp"
 
+#ifdef __EMSCRIPTEN__
+#include "pmtiles_direct.hpp"
+#endif
+
 extern "C" {
 #include "jsonpull/jsonpull.h"
 }
@@ -1736,6 +1740,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 			postfilter = NULL;
 		}
 
+#ifndef __EMSCRIPTEN__
 		if (prefilter != NULL) {
 			setup_filter(prefilter, &prefilter_write, &prefilter_read, &prefilter_pid, z, tx, ty);
 			prefilter_fp = fdopen(prefilter_write, "w");
@@ -1792,6 +1797,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 			}
 			prefilter_jp = json_begin_file(prefilter_read_fp);
 		}
+#endif  // __EMSCRIPTEN__
 
 		// Read features, filter them, assign them to layers
 
@@ -2208,6 +2214,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 		// Close the prefilter if it was opened.
 		// Close the output files for the next zoom level.
 
+#ifndef __EMSCRIPTEN__
 		if (prefilter != NULL) {
 			json_end(prefilter_jp);
 			if (fclose(prefilter_read_fp) != 0) {
@@ -2230,6 +2237,7 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 				exit(EXIT_PTHREAD);
 			}
 		}
+#endif  // __EMSCRIPTEN__
 
 		for (int j = 0; j < child_shards; j++) {
 			if (within[j]) {
@@ -2576,9 +2584,11 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 			}
 		}
 
+#ifndef __EMSCRIPTEN__
 		if (postfilter != NULL) {
 			tile.layers = filter_layers(postfilter, tile.layers, z, tx, ty, layermaps, tiling_seg, layer_unmaps, 1 << tile_detail);
 		}
+#endif  // __EMSCRIPTEN__
 
 		if (z == 0 && unclipped_features < original_features / 2 && clipbboxes.size() == 0) {
 			fprintf(stderr, "\n\nMore than half the features were clipped away at zoom level 0.\n");
@@ -2871,7 +2881,14 @@ long long write_tile(decompressor *geoms, std::atomic<long long> *geompos_in, ch
 
 				if (outdb != NULL) {
 					mbtiles_write_tile(outdb, z, tx, ty, compressed.data(), compressed.size());
-				} else if (outdir != NULL) {
+				}
+#ifdef __EMSCRIPTEN__
+				else if (g_pmtiles_writer != nullptr) {
+					// In WASM mode without SQLite, write directly to PMTiles writer
+					mbtiles_write_tile(nullptr, z, tx, ty, compressed.data(), compressed.size());
+				}
+#endif
+				else if (outdir != NULL) {
 					dir_write_tile(outdir, z, tx, ty, compressed);
 				}
 

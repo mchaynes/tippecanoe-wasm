@@ -1,0 +1,54 @@
+name: WASM Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.51'
+
+      - name: Verify Emscripten
+        run: emcc --version
+
+      - name: Build WASM (single-threaded)
+        run: |
+          emmake make -f Makefile.emscripten clean
+          emmake make -f Makefile.emscripten single
+
+      - name: Install test dependencies
+        working-directory: wasm
+        run: |
+          npm install
+          npx playwright install chromium
+
+      - name: Run Playwright tests
+        working-directory: wasm
+        run: npx playwright test test/pmtiles.spec.js --reporter=list
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tippecanoe-wasm
+          path: |
+            wasm/dist/
+            wasm/index.js
+            wasm/index.d.ts
+            wasm/package.json
+            wasm/pre.js
+          retention-days: 30
