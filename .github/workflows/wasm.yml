@@ -102,15 +102,19 @@ jobs:
           test -f deploy/_headers && echo "✓ _headers exists" || echo "✗ _headers missing"
           test -f deploy/dist/tippecanoe-st.wasm && echo "✓ WASM file exists" || echo "✗ WASM file missing"
 
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          wrangler pages deploy deploy \
+          # Install wrangler locally
+          npm install wrangler
+
+          # Create project if it doesn't exist (will fail silently if it already exists)
+          npx wrangler pages project create tippecanoe-wasm --production-branch=main || true
+
+          # Deploy to Pages
+          npx wrangler pages deploy deploy \
             --project-name=tippecanoe-wasm \
             --branch=${{ github.ref_name }} \
             --commit-hash=${{ github.sha }}
