@@ -27,8 +27,8 @@
 
                 // Load test GeoJSON
                 print('Loading test GeoJSON...');
-                // Use a small test file to avoid temp file issues in CI
-                const response = await fetch('./test.geojson');
+                // Use wetlands.geojson - the file that's known to work
+                const response = await fetch('../wetlands.geojson');
                 const geojsonText = await response.text();
                 const geojsonBytes = new TextEncoder().encode(geojsonText);
                 print(`GeoJSON size: ${geojsonBytes.length} bytes`);

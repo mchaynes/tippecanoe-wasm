@@ -8,7 +8,7 @@ if (typeof Module.TIPPECANOE_MAX_MEMORY === 'undefined') {
     Module.TIPPECANOE_MAX_MEMORY = 2 * 1024 * 1024 * 1024; // 2GB default
 }
 
-// Setup virtual filesystem paths
+// Setup virtual filesystem paths - use both preRun and onRuntimeInitialized for safety
 Module['preRun'] = Module['preRun'] || [];
 Module['preRun'].push(function() {
     // Create /tmp for temp files
@@ -25,6 +25,21 @@ Module['preRun'].push(function() {
         // Already exists
     }
 });
+
+// Also ensure directories exist after runtime init
+var origOnRuntimeInitialized = Module['onRuntimeInitialized'];
+Module['onRuntimeInitialized'] = function() {
+    try {
+        if (!FS.analyzePath('/tmp').exists) {
+            FS.mkdir('/tmp');
+        }
+    } catch (e) {
+        // Ignore
+    }
+    if (origOnRuntimeInitialized) {
+        origOnRuntimeInitialized();
+    }
+};
 
 // Handle stdout/stderr for progress messages
 Module['print'] = Module['print'] || function(text) {

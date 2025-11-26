@@ -22,12 +22,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.emscripten_cache
-          key: emsdk-3.1.51-${{ runner.os }}
+          key: emsdk-4.0.20-${{ runner.os }}
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
-          version: '3.1.51'
+          version: '4.0.20'
 
       - name: Verify Emscripten
         run: emcc --version
@@ -36,6 +36,10 @@ jobs:
         run: |
           emmake make -f Makefile.emscripten clean
           emmake make -f Makefile.emscripten single
+          echo "=== Built WASM files ==="
+          ls -la wasm/dist/
+          echo "=== Test files ==="
+          ls -la wasm/test/
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
