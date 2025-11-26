@@ -19,11 +19,20 @@
         h1 {
             margin-bottom: 0.5rem;
         }
+        a {
+            color: #0066cc;
+            text-decoration: none;
+            
+        }
+        a:hover {
+                text-decoration: underline;
+        }
         .subtitle {
             color: #666;
         }
         .warning {
             color: #722424;
+            font-size: 0.8rem;
         }
         .drop-zone {
             border: 2px dashed #ccc;
@@ -248,8 +257,10 @@
     <div class="result" id="result">
         <h3 id="resultTitle"></h3>
         <div class="stats" id="resultStats"></div>
+        <p class="subtitle">You can quickly view your PMTiles file at <a href="https://pmtiles.io" target="_blank">pmtiles.io</a>.</p>
         <button class="download-btn" id="downloadBtn">Download PMTiles</button>
     </div>
+
 
     <p class="warning">
         This website is AI slop. I told Claude to compile Tippecanoe to WASM, and this is the result.
