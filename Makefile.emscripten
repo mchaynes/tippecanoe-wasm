@@ -1,0 +1,151 @@
+# Makefile.emscripten - Build tippecanoe for WebAssembly
+#
+# Usage:
+#   emmake make -f Makefile.emscripten          # Multi-threaded build
+#   emmake make -f Makefile.emscripten single   # Single-threaded build
+#   emmake make -f Makefile.emscripten all      # Both builds
+
+SHELL = /bin/sh
+
+# Output directory
+WASM_OUT = wasm/dist
+
+# Compiler settings - Emscripten will set CC and CXX
+CFLAGS := -fPIC -DBUILD_INFO=wasm -D__EMSCRIPTEN_BUILD__
+CXXFLAGS := -std=c++17 -fPIC -DBUILD_INFO=wasm -D__EMSCRIPTEN_BUILD__
+WARNING_FLAGS := -Wall -Wshadow -Wsign-compare -Wextra -Wunreachable-code -Wuninitialized
+RELEASE_FLAGS := -O3 -DNDEBUG
+
+FINAL_FLAGS := $(WARNING_FLAGS) $(RELEASE_FLAGS)
+
+INCLUDES = -I. -Iclipper2/include -Iwasm/include -s USE_ZLIB=1
+
+# Common Emscripten flags
+EMCC_COMMON = -s WASM=1 \
+              -s ALLOW_MEMORY_GROWTH=1 \
+              -s MAXIMUM_MEMORY=4GB \
+              -s STACK_SIZE=1MB \
+              -s USE_ZLIB=1 \
+              -s MODULARIZE=1 \
+              -s EXPORT_ES6=1 \
+              -s ENVIRONMENT='web,worker' \
+              -s FORCE_FILESYSTEM=1 \
+              -s EXIT_RUNTIME=0 \
+              -s INVOKE_RUN=0 \
+              -s EXPORTED_FUNCTIONS='["_main","_tippecanoe_run","_tippecanoe_get_output","_tippecanoe_get_output_size","_tippecanoe_free_output","_malloc","_free"]' \
+              -s EXPORTED_RUNTIME_METHODS='["FS","callMain","ccall","cwrap","UTF8ToString","stringToUTF8","lengthBytesUTF8"]' \
+              --bind \
+              --pre-js wasm/pre.js
+
+# Multi-threaded flags (requires SharedArrayBuffer)
+EMCC_MT = $(EMCC_COMMON) \
+          -pthread \
+          -s PTHREAD_POOL_SIZE='navigator.hardwareConcurrency||4' \
+          -s PROXY_TO_PTHREAD=0
+
+# Single-threaded flags (fallback, no SharedArrayBuffer needed)
+EMCC_ST = $(EMCC_COMMON) \
+          -s SINGLE_FILE=0 \
+          -DTIPPECANOE_NO_THREADS
+
+# Source files (excluding SQLite-dependent mbtiles.o for WASM, adding pmtiles_direct.o and wasm_api.o)
+# Note: We still include mbtiles.o but it will have WASM-specific code paths
+WASM_OBJS = geojson.o \
+            jsonpull/jsonpull.o \
+            tile.o \
+            pool.o \
+            mbtiles.o \
+            geometry.o \
+            projection.o \
+            memfile.o \
+            mvt.o \
+            serial.o \
+            main.o \
+            platform.o \
+            text.o \
+            dirtiles.o \
+            pmtiles_file.o \
+            pmtiles_direct.o \
+            plugin.o \
+            read_json.o \
+            write_json.o \
+            geobuf.o \
+            flatgeobuf.o \
+            evaluator.o \
+            geocsv.o \
+            csv.o \
+            geojson-loop.o \
+            json_logger.o \
+            visvalingam.o \
+            compression.o \
+            clip.o \
+            sort.o \
+            attribute.o \
+            thread.o \
+            shared_borders.o \
+            wasm_api.o \
+            clipper2/src/clipper.engine.o
+
+# Default target: multi-threaded build
+.PHONY: all multi single clean
+
+all: multi single
+
+multi: $(WASM_OUT)/tippecanoe.js
+
+single: $(WASM_OUT)/tippecanoe-st.js
+
+# Create output directory
+$(WASM_OUT):
+	mkdir -p $(WASM_OUT)
+
+# Create pre.js if it doesn't exist
+wasm/pre.js:
+	mkdir -p wasm
+	echo "// Pre-initialization script for tippecanoe WASM" > wasm/pre.js
+	echo "Module['noInitialRun'] = true;" >> wasm/pre.js
+
+# Multi-threaded build
+$(WASM_OUT)/tippecanoe.js: $(WASM_OBJS) $(WASM_OUT) wasm/pre.js
+	$(CXX) $(FINAL_FLAGS) $(CXXFLAGS) $(EMCC_MT) -o $@ $(WASM_OBJS) -lm
+
+# Single-threaded build
+$(WASM_OUT)/tippecanoe-st.js: $(WASM_OBJS) $(WASM_OUT) wasm/pre.js
+	$(CXX) $(FINAL_FLAGS) $(CXXFLAGS) $(EMCC_ST) -o $@ $(WASM_OBJS) -lm
+
+# Object file rules
+%.o: %.c
+	$(CC) -MMD $(INCLUDES) $(FINAL_FLAGS) $(CFLAGS) -c -o $@ $<
+
+%.o: %.cpp
+	$(CXX) -MMD $(INCLUDES) $(FINAL_FLAGS) $(CXXFLAGS) -c -o $@ $<
+
+# Include dependency files
+-include $(wildcard *.d)
+-include $(wildcard jsonpull/*.d)
+-include $(wildcard clipper2/src/*.d)
+
+clean:
+	rm -f *.o *.d jsonpull/*.o jsonpull/*.d clipper2/src/*.o clipper2/src/*.d
+	rm -rf $(WASM_OUT)
+
+# Help target
+help:
+	@echo "Tippecanoe WASM Build"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make -f Makefile.emscripten          Build multi-threaded version"
+	@echo "  make -f Makefile.emscripten single   Build single-threaded version"
+	@echo "  make -f Makefile.emscripten all      Build both versions"
+	@echo "  make -f Makefile.emscripten clean    Clean build artifacts"
+	@echo ""
+	@echo "Requirements:"
+	@echo "  - Emscripten SDK (emsdk) must be activated"
+	@echo "  - Run with: emmake make -f Makefile.emscripten"
+	@echo ""
+	@echo "Output:"
+	@echo "  $(WASM_OUT)/tippecanoe.js      Multi-threaded (requires SharedArrayBuffer)"
+	@echo "  $(WASM_OUT)/tippecanoe.wasm"
+	@echo "  $(WASM_OUT)/tippecanoe.worker.js"
+	@echo "  $(WASM_OUT)/tippecanoe-st.js   Single-threaded (fallback)"
+	@echo "  $(WASM_OUT)/tippecanoe-st.wasm"

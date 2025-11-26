@@ -371,6 +371,9 @@ serial_feature parse_feature(json_pull *jp, int z, unsigned x, unsigned y, std::
 	}
 }
 
+#ifndef __EMSCRIPTEN__
+// External filter functionality requires fork/exec which is not available in WASM
+
 static pthread_mutex_t pipe_lock = PTHREAD_MUTEX_INITIALIZER;
 
 void setup_filter(const char *filter, int *write_to, int *read_from, pid_t *pid, unsigned z, unsigned x, unsigned y) {
@@ -508,3 +511,5 @@ std::vector<mvt_layer> filter_layers(const char *filter, std::vector<mvt_layer> 
 
 	return nlayers;
 }
+
+#endif  // __EMSCRIPTEN__

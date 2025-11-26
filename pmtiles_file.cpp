@@ -385,7 +385,7 @@ sqlite3 *pmtilesmeta2tmp(const char *fname, const char *pmtiles_map) {
 	}
 	sqlite3_free(sql);
 
-	std::string json_s{pmtiles_map + header.json_metadata_offset, header.json_metadata_bytes};
+	std::string json_s{pmtiles_map + header.json_metadata_offset, static_cast<size_t>(header.json_metadata_bytes)};
 	std::string decompressed_json;
 
 	if (header.internal_compression == pmtiles::COMPRESSION_NONE) {

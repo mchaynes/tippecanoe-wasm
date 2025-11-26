@@ -45,6 +45,9 @@
 #include "jsonpull/jsonpull.h"
 #include "mbtiles.hpp"
 #include "pmtiles_file.hpp"
+#ifdef __EMSCRIPTEN__
+#include "pmtiles_direct.hpp"
+#endif
 #include "tile.hpp"
 #include "pool.hpp"
 #include "projection.hpp"
@@ -3836,9 +3839,27 @@ int main(int argc, char **argv) {
 		mbtiles_close(outdb, argv[0]);
 	}
 
+#ifdef __EMSCRIPTEN__
+	// In WASM mode, finalize the direct PMTiles writer
+	if (g_pmtiles_writer != nullptr && pmtiles_has_suffix(out_mbtiles)) {
+		std::string pmtiles_data = g_pmtiles_writer->finalize(std::get<1>(input_ret), prevent[P_TILE_COMPRESSION] == 0);
+
+		// Write to virtual filesystem
+		FILE *outfile = fopen(out_mbtiles, "wb");
+		if (outfile != NULL) {
+			fwrite(pmtiles_data.data(), 1, pmtiles_data.size(), outfile);
+			fclose(outfile);
+		}
+
+		// Also set the output buffer for direct JS access
+		extern void tippecanoe_set_output(const std::string &data);
+		tippecanoe_set_output(pmtiles_data);
+	}
+#else
 	if (pmtiles_has_suffix(out_mbtiles)) {
 		mbtiles_map_image_to_pmtiles(out_mbtiles, std::get<1>(input_ret), prevent[P_TILE_COMPRESSION] == 0, quiet, quiet_progress);
 	}
+#endif
 
 #ifdef MTRACE
 	muntrace();

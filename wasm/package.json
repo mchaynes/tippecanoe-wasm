@@ -1,0 +1,56 @@
+{
+  "name": "tippecanoe-wasm",
+  "version": "0.1.0",
+  "description": "Tippecanoe compiled to WebAssembly - Generate PMTiles in the browser",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "pre.js",
+    "dist/*.js",
+    "dist/*.wasm",
+    "dist/*.worker.js"
+  ],
+  "keywords": [
+    "tippecanoe",
+    "pmtiles",
+    "mbtiles",
+    "vector-tiles",
+    "mapbox",
+    "geojson",
+    "webassembly",
+    "wasm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felt/tippecanoe.git"
+  },
+  "license": "BSD-2-Clause",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "playwright": "^1.57.0"
+  },
+  "browser": {
+    "./dist/tippecanoe.js": "./dist/tippecanoe.js",
+    "./dist/tippecanoe-st.js": "./dist/tippecanoe-st.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/felt/tippecanoe/issues"
+  },
+  "homepage": "https://github.com/felt/tippecanoe#readme"
+}

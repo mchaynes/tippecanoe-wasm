@@ -522,7 +522,7 @@ inline std::tuple<std::string, std::string, int> make_root_leaves(const std::fun
 }
 
 inline void collect_entries(const std::function<std::string(const std::string &, uint8_t)> decompress, std::vector<entry_zxy> &tile_entries, const char *pmtiles_map, const headerv3 &h, uint64_t dir_offset, uint64_t dir_len) {
-	std::string dir_s{pmtiles_map + dir_offset, dir_len};
+	std::string dir_s{pmtiles_map + dir_offset, static_cast<size_t>(dir_len)};
 	std::string decompressed_dir = decompress(dir_s, h.internal_compression);
 
 	auto dir_entries = pmtiles::deserialize_directory(decompressed_dir);
@@ -558,7 +558,7 @@ inline std::pair<uint64_t, uint32_t> get_tile(const std::function<std::string(co
 	uint64_t dir_offset = h.root_dir_offset;
 	uint32_t dir_length = h.root_dir_bytes;
 	for (int depth = 0; depth <= 3; depth++) {
-		std::string dir_s{pmtiles_map + dir_offset, dir_length};
+		std::string dir_s{pmtiles_map + dir_offset, static_cast<size_t>(dir_length)};
 		std::string decompressed_dir = decompress(dir_s, h.internal_compression);
 		auto dir_entries = pmtiles::deserialize_directory(decompressed_dir);
 		auto entry = find_tile(dir_entries, tile_id);

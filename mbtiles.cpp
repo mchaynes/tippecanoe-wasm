@@ -22,12 +22,24 @@
 #include "version.hpp"
 #include "errors.hpp"
 
+#ifdef __EMSCRIPTEN__
+#include "pmtiles_direct.hpp"
+#include "pmtiles_file.hpp"
+#endif
+
 size_t max_tilestats_attributes = 1000;
 size_t max_tilestats_sample_values = 1000;
 size_t max_tilestats_values = 100;
 
 sqlite3 *mbtiles_open(char *dbname, char **argv, int forcetable) {
 	sqlite3 *outdb;
+
+#ifdef __EMSCRIPTEN__
+	// In WASM mode, skip SQLite for PMTiles output - use direct writer instead
+	if (pmtiles_has_suffix(dbname)) {
+		return NULL;
+	}
+#endif
 
 	if (sqlite3_open(dbname, &outdb) != SQLITE_OK) {
 		fprintf(stderr, "%s: %s: %s\n", argv[0], dbname, sqlite3_errmsg(outdb));
@@ -102,6 +114,15 @@ sqlite3 *mbtiles_open(char *dbname, char **argv, int forcetable) {
 }
 
 void mbtiles_write_tile(sqlite3 *outdb, int z, int tx, int ty, const char *data, int size) {
+#ifdef __EMSCRIPTEN__
+	// In WASM mode, route tiles to the direct PMTiles writer
+	if (g_pmtiles_writer != nullptr) {
+		g_pmtiles_writer->add_tile(z, tx, ty, std::string(data, size));
+		return;
+	}
+	// Fall through to SQLite if no direct writer (shouldn't happen in normal WASM usage)
+#endif
+
 	std::string hash = std::to_string(fnv1a(std::string(data, size)));
 
 	// following https://github.com/mapbox/node-mbtiles/blob/master/lib/mbtiles.js
