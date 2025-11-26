@@ -57,14 +57,45 @@ jobs:
         working-directory: wasm
         run: npx playwright test test/pmtiles.spec.js --reporter=list
 
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p deploy/dist
+          cp wasm/dist/* deploy/dist/
+          cp wasm/index.html deploy/
+          cp wasm/index.js deploy/
+          cp wasm/index.d.ts deploy/
+          cp wasm/pre.js deploy/
+          cp wasm/package.json deploy/
+          cp wasm/_headers deploy/
+          echo "=== Deployment files ==="
+          ls -laR deploy/
+
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: tippecanoe-wasm
-          path: |
-            wasm/dist/
-            wasm/index.js
-            wasm/index.d.ts
-            wasm/package.json
-            wasm/pre.js
+          path: deploy/
           retention-days: 30
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tippecanoe-wasm
+          path: deploy/
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy deploy --project-name=tippecanoe-wasm
