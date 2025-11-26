@@ -93,9 +93,21 @@ jobs:
           name: tippecanoe-wasm
           path: deploy/
 
+      - name: Verify deployment files
+        run: |
+          echo "=== Deployment directory structure ==="
+          ls -laR deploy/
+          echo "=== Checking for required files ==="
+          test -f deploy/index.html && echo "✓ index.html exists" || echo "✗ index.html missing"
+          test -f deploy/_headers && echo "✓ _headers exists" || echo "✗ _headers missing"
+          test -f deploy/dist/tippecanoe-st.wasm && echo "✓ WASM file exists" || echo "✗ WASM file missing"
+
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy deploy --project-name=tippecanoe-wasm
+          projectName: tippecanoe-wasm
+          directory: deploy
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
